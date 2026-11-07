@@ -1,0 +1,75 @@
+cabal-version:      3.0
+name:               engi
+version:            0.1.0.0
+synopsis:           Archive closed agent sessions: strip, compress, verify
+description:
+  Engi copies closed agent session transcripts into a zstd archive with a
+  manifest. It strips the data of images, so that the archive stays small
+  and the hashes of the records are stable. It never changes or deletes an
+  original. A separate step exports the archive, encrypted with age, to an
+  external drive.
+category:           Development
+tested-with:        GHC == 9.10.3
+license:            MIT
+author:             Lilly Cham
+maintainer:         me@lillycham.com
+copyright:          2026 Lilly Cham
+license-file:       LICENSE
+build-type:         Simple
+extra-doc-files:    README.md
+
+common shared
+    default-language: GHC2021
+    ghc-options:      -Wall -Wprepositive-qualified-module -Wmissing-import-lists
+
+library
+    import:           shared
+    hs-source-dirs:   src
+    exposed-modules:  Engi.Archive
+                    , Engi.Manifest
+                    , Engi.Strip
+                    , Engi.Verify
+    build-depends:    base >=4 && <5
+                    , aeson
+                    , base16-bytestring
+                    , bytestring
+                    , containers
+                    , cryptohash-sha256
+                    , directory
+                    , filepath
+                    , text
+                    , time
+                    , zstd
+
+executable engi
+    import:           shared
+    main-is:          Main.hs
+    hs-source-dirs:   app
+    build-depends:    base >=4 && <5
+                    , bytestring
+                    , engi
+                    , optparse-applicative
+                    , text
+                    , time
+
+test-suite engi-test
+    import:           shared
+    type:             exitcode-stdio-1.0
+    main-is:          Main.hs
+    hs-source-dirs:   test
+    other-modules:    ArchiveTests
+    build-depends:    base >=4 && <5
+                    , QuickCheck
+                    , base16-bytestring
+                    , bytestring
+                    , cryptohash-sha256
+                    , directory
+                    , engi
+                    , filepath
+                    , tasty
+                    , tasty-hunit
+                    , tasty-quickcheck
+                    , temporary
+                    , text
+                    , time
+                    , zstd
