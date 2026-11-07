@@ -21,6 +21,7 @@ mkDerivation {
     filepath process QuickCheck tasty tasty-hunit tasty-quickcheck
     temporary text time zstd
   ];
+  homepage = "https://github.com/lillycham/engi";
   description = "Archive closed agent sessions: strip, compress, verify";
   license = lib.meta.getLicenseFromSpdxId "MIT";
   mainProgram = "engi";

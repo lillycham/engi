@@ -4,10 +4,13 @@ version:            0.1.0.0
 synopsis:           Archive closed agent sessions: strip, compress, verify
 description:
   Engi copies closed agent session transcripts into a zstd archive with a
-  manifest. It strips the data of images, so that the archive stays small
-  and the hashes of the records are stable. It never changes or deletes an
+  manifest. It strips the data of images and the opaque signatures of
+  reasoning blocks, so that the archive stays small and the hashes of the
+  records are stable. It never changes or deletes an
   original. A separate step exports the archive, encrypted with age, to an
   external drive.
+homepage:           https://github.com/lillycham/engi
+bug-reports:        https://github.com/lillycham/engi/issues
 category:           Development
 tested-with:        GHC == 9.10.3
 license:            MIT
