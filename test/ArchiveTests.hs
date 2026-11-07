@@ -11,13 +11,11 @@ import Data.ByteString.Char8 qualified as BC
 import Data.List (sort)
 import Data.Text (Text)
 import Data.Text.Encoding (decodeUtf8)
-import Data.Time (NominalDiffTime, UTCTime, addUTCTime)
+import Data.Time (UTCTime, addUTCTime)
 import Engi.Archive
-  ( Config (Config, cfgArchive, cfgIdle, cfgLevel, cfgSources),
-    Decision (DecideActive, DecideArchive, DecideUnchanged),
+  ( Decision (DecideActive, DecideArchive, DecideUnchanged),
     Outcome (Active, Archived, Failed, Unchanged),
     Result (Result, resultOutcome),
-    Source (Source),
     archiveAll,
     decide,
   )
@@ -42,21 +40,11 @@ import Engi.Manifest
   )
 import Engi.Strip (strip)
 import Engi.Verify (Finding (Bad, Ok, Orphan), verifyArchive)
+import Support (config, fresh, hours, now, old, put, withFixture)
 import System.Directory (createDirectoryIfMissing, doesFileExist, getModificationTime, removeFile, setModificationTime)
-import System.FilePath (takeDirectory, (</>))
-import System.IO.Temp (withSystemTempDirectory)
+import System.FilePath ((</>))
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (assertBool, assertFailure, testCase, (@?=))
-
-now :: UTCTime
-now = read "2026-11-07 12:00:00 UTC"
-
-hours :: NominalDiffTime -> NominalDiffTime
-hours h = h * 3600
-
-old, fresh :: UTCTime
-old = addUTCTime (negate (hours 7)) now
-fresh = addUTCTime (negate (hours 1)) now
 
 sha :: ByteString -> Text
 sha = decodeUtf8 . Base16.encode . SHA256.hash
@@ -64,32 +52,6 @@ sha = decodeUtf8 . Base16.encode . SHA256.hash
 -- | A transcript with one thinking signature that the strip rule removes.
 withSignature :: ByteString
 withSignature = "{\"a\":1}\n{\"signature\":\"" <> BC.replicate 300 'A' <> "\"}\n"
-
--- | A source folder and an archive folder in a temporary place.
-withFixture :: (FilePath -> FilePath -> IO a) -> IO a
-withFixture k = withSystemTempDirectory "engi-test" $ \d -> do
-  let src = d </> "src"
-      arc = d </> "archive"
-  createDirectoryIfMissing True src
-  createDirectoryIfMissing True arc
-  k src arc
-
--- | Write a file below a root and set its modification time.
-put :: FilePath -> FilePath -> ByteString -> UTCTime -> IO ()
-put root rel bytes t = do
-  let p = root </> rel
-  createDirectoryIfMissing True (takeDirectory p)
-  B.writeFile p bytes
-  setModificationTime p t
-
-config :: FilePath -> FilePath -> Config
-config src arc =
-  Config
-    { cfgArchive = arc,
-      cfgSources = [Source "claude" src],
-      cfgIdle = hours 6,
-      cfgLevel = 3
-    }
 
 unzstd :: FilePath -> IO ByteString
 unzstd p = do

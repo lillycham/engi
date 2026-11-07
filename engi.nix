@@ -1,6 +1,6 @@
 { mkDerivation, aeson, base, base16-bytestring, bytestring
 , containers, cryptohash-sha256, directory, filepath, lib
-, optparse-applicative, QuickCheck, tasty, tasty-hunit
+, optparse-applicative, process, QuickCheck, tasty, tasty-hunit
 , tasty-quickcheck, temporary, text, time, zstd
 }:
 mkDerivation {
@@ -11,15 +11,15 @@ mkDerivation {
   isExecutable = true;
   libraryHaskellDepends = [
     aeson base base16-bytestring bytestring containers
-    cryptohash-sha256 directory filepath text time zstd
+    cryptohash-sha256 directory filepath process text time zstd
   ];
   executableHaskellDepends = [
     base bytestring optparse-applicative text time
   ];
   testHaskellDepends = [
     base base16-bytestring bytestring cryptohash-sha256 directory
-    filepath QuickCheck tasty tasty-hunit tasty-quickcheck temporary
-    text time zstd
+    filepath process QuickCheck tasty tasty-hunit tasty-quickcheck
+    temporary text time zstd
   ];
   description = "Archive closed agent sessions: strip, compress, verify";
   license = lib.meta.getLicenseFromSpdxId "MIT";

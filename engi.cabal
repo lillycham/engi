@@ -26,6 +26,7 @@ library
     import:           shared
     hs-source-dirs:   src
     exposed-modules:  Engi.Archive
+                    , Engi.Export
                     , Engi.Manifest
                     , Engi.Strip
                     , Engi.Verify
@@ -37,6 +38,7 @@ library
                     , cryptohash-sha256
                     , directory
                     , filepath
+                    , process
                     , text
                     , time
                     , zstd
@@ -58,6 +60,8 @@ test-suite engi-test
     main-is:          Main.hs
     hs-source-dirs:   test
     other-modules:    ArchiveTests
+                    , ExportTests
+                    , Support
     build-depends:    base >=4 && <5
                     , QuickCheck
                     , base16-bytestring
@@ -66,6 +70,7 @@ test-suite engi-test
                     , directory
                     , engi
                     , filepath
+                    , process
                     , tasty
                     , tasty-hunit
                     , tasty-quickcheck

@@ -8,6 +8,7 @@ import Data.ByteString qualified as B
 import Data.ByteString.Base16 qualified as Base16
 import Data.ByteString.Char8 qualified as BC
 import ArchiveTests (archiveTests)
+import ExportTests (exportTests)
 import Engi.Strip (ruleVersion, strip)
 import Test.QuickCheck (Gen, choose, elements, forAll, listOf, oneof, (===))
 import Test.Tasty (TestTree, defaultMain, testGroup)
@@ -42,7 +43,8 @@ tests =
       testGroup "boundaries" boundaryCases,
       testGroup "pass through" passCases,
       testGroup "properties" propertyCases,
-      archiveTests
+      archiveTests,
+      exportTests
     ]
 
 anchorCases :: [TestTree]

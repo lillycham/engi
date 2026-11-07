@@ -2,7 +2,7 @@
 
 module Main (main) where
 
-import Control.Applicative (some)
+import Control.Applicative (many, some)
 import Control.Monad (when)
 import Data.ByteString qualified as B
 import Data.Char (isAsciiLower, isDigit)
@@ -15,6 +15,12 @@ import Engi.Archive
     Result (Result),
     Source (Source),
     archiveAll,
+  )
+import Engi.Export
+  ( ExportConfig (ExportConfig),
+    Item (Item),
+    ItemOutcome (AlreadySent, ItemFailed, Sent),
+    exportArchive,
   )
 import Engi.Manifest (Entry (entryName, entryRawBytes, entryStrippedBytes, entryVersion, entryZstdBytes))
 import Engi.Strip (strip)
@@ -43,11 +49,13 @@ import Options.Applicative
     (<**>),
   )
 import System.Exit (ExitCode (ExitFailure), exitWith)
+import System.IO (hPutStrLn, stderr)
 
 data Command
   = Strip
   | Archive FilePath [Source] Double Int Bool
   | Verify FilePath
+  | Export ExportConfig Bool
 
 main :: IO ()
 main = execParser (info (commandP <**> helper) (fullDesc <> progDesc "Archive closed agent sessions")) >>= run
@@ -58,7 +66,20 @@ commandP =
     ( command "strip" (info (pure Strip) (progDesc "Apply the strip rule: read a transcript on stdin, write its archive form on stdout"))
         <> command "archive" (info archiveP (progDesc "Copy, strip and compress the closed sessions of the sources"))
         <> command "verify" (info verifyP (progDesc "Read the archive again and check it against its manifest"))
+        <> command "export" (info exportP (progDesc "Encrypt the archive with age and copy the new files to a drive"))
     )
+
+exportP :: Parser Command
+exportP =
+  Export
+    <$> ( ExportConfig
+            <$> strOption (long "archive" <> metavar "DIR" <> help "The archive folder")
+            <*> strOption (long "dest" <> metavar "DIR" <> help "A folder on the drive. It must exist.")
+            <*> strOption (long "age" <> metavar "COMMAND" <> value "age" <> showDefault <> help "The age command")
+            <*> many (T.pack <$> strOption (long "recipient" <> metavar "KEY" <> help "A public key of a recipient (age1...). Repeat for more."))
+            <*> many (strOption (long "recipients-file" <> metavar "FILE" <> help "A file of recipients, one on each line. Repeat for more."))
+        )
+    <*> switch (short 'v' <> long "verbose" <> help "Also list the files that were already on the drive")
 
 archiveP :: Parser Command
 archiveP =
@@ -115,6 +136,28 @@ run (Verify archive) = do
       orphans = length [() | Orphan _ <- findings]
   putStrLn (show oks <> " ok, " <> show bad <> " bad, " <> show orphans <> " not in the manifest")
   when (bad > 0) (exitWith (ExitFailure 1))
+run (Export cfg verbose) = do
+  result <- exportArchive cfg
+  case result of
+    Left err -> do
+      hPutStrLn stderr ("engi export: " <> err)
+      exitWith (ExitFailure 1)
+    Right items -> do
+      mapM_ (reportItem verbose) items
+      let count p = length [() | Item _ o <- items, p o]
+          failed = count isItemFailed
+      putStrLn (show (count (== Sent)) <> " sent, " <> show (count (== AlreadySent)) <> " already on the drive, " <> show failed <> " failed")
+      when (failed > 0) (exitWith (ExitFailure 1))
+
+isItemFailed :: ItemOutcome -> Bool
+isItemFailed (ItemFailed _) = True
+isItemFailed _ = False
+
+reportItem :: Bool -> Item -> IO ()
+reportItem verbose (Item p o) = case o of
+  Sent -> putStrLn ("sent " <> p)
+  AlreadySent -> when verbose (putStrLn ("already sent " <> p))
+  ItemFailed err -> putStrLn ("FAILED " <> p <> ": " <> err)
 
 isArchived, isFailed :: Outcome -> Bool
 isArchived (Archived _) = True

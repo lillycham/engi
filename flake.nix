@@ -11,16 +11,34 @@
       # engi.nix comes from `cabal2nix . > engi.nix`.
       # Rerun it when engi.cabal changes. This avoids import-from-derivation.
       engiFor = pkgs: pkgs.haskellPackages.callPackage ./engi.nix { };
+
+      # The package to install has no tests. `checks.tests` runs them.
+      # `engi export` runs age, so the installed program has age on its PATH.
+      # A scheduled service does not have the PATH of a shell.
+      installFor = pkgs:
+        let
+          hlib = pkgs.haskell.lib;
+          base = hlib.justStaticExecutables (hlib.dontCheck (engiFor pkgs));
+        in
+        hlib.overrideCabal base (drv: {
+          buildTools = (drv.buildTools or [ ]) ++ [ pkgs.makeWrapper ];
+          postInstall = (drv.postInstall or "") + ''
+            wrapProgram $out/bin/engi --prefix PATH : ${pkgs.lib.makeBinPath [ pkgs.age ]}
+          '';
+        });
     in
     {
-      # The package to install has no tests. `checks.tests` runs them.
       packages = forAllSystems (pkgs: rec {
-        engi = pkgs.haskell.lib.justStaticExecutables (pkgs.haskell.lib.dontCheck (engiFor pkgs));
+        engi = installFor pkgs;
         default = engi;
       });
 
+      # The tests include a round trip with the real age, so age is a tool of the
+      # test run. Without it that test prints "skipped" and passes.
       checks = forAllSystems (pkgs: {
-        tests = engiFor pkgs;
+        tests = pkgs.haskell.lib.overrideCabal (engiFor pkgs) (drv: {
+          testToolDepends = (drv.testToolDepends or [ ]) ++ [ pkgs.age ];
+        });
       });
 
       devShells = forAllSystems (pkgs: {

@@ -4,10 +4,10 @@ Engi archives closed agent sessions. It copies each session transcript into a
 folder, strips the image data and thinking signatures, compresses it with zstd and records it in a
 manifest. It never changes or deletes an original.
 
-Status as of 2026-11-07: `engi archive`, `engi verify` and `engi strip` work and
-have tests. The strip rule is written in [docs/strip-rule.md](docs/strip-rule.md)
-and covers Claude Code, Codex, omp and pi sessions. `engi export` (age and the
-external drive) and the service definition are not written yet.
+Status as of 2026-11-07: `engi archive`, `engi verify`, `engi export` and
+`engi strip` work and have tests. The strip rule is written in
+[docs/strip-rule.md](docs/strip-rule.md) and covers Claude Code, Codex, omp and
+pi sessions. The service definition is not part of this repository.
 
 On one machine, one run over every session (262 files, 846 MB) took about 10
 seconds at zstd level 9 and made an archive of about 82 MB. A second run reads
@@ -49,7 +49,7 @@ pointers can still be resolved.
 engi archive --archive DIR --source AGENT=DIR [--source ...] [--idle-hours 6] [--level 9] [-v]
 engi verify  --archive DIR
 engi strip   < transcript.jsonl > archive-form.jsonl
-engi export  (planned) encrypt and copy new files to a drive
+engi export  --archive DIR --dest DIR (--recipient KEY | --recipients-file FILE) [--age COMMAND] [-v]
 ```
 
 `archive` prints the files it archived and the failures, and a summary. It exits
@@ -65,6 +65,41 @@ engi archive --archive ~/archive/sessions \
   --source codex=~/.codex/sessions \
   --source omp=~/.omp/agent/sessions \
   --source pi=~/.pi/agent/sessions
+```
+
+## Export to a drive
+
+`engi export` encrypts the archive with [age](https://age-encryption.org) and
+copies it to a folder on a drive. It needs only the public key of the recipient,
+so the private key can stay off this machine.
+
+```
+engi export --archive ~/archive/sessions --dest /Volumes/Backup/sessions \
+  --recipient age1...
+```
+
+- Each compressed file goes to the drive as `<agent>/<name>.jsonl.zst.age`. The
+  manifest goes as a snapshot, `manifest.N.jsonl.age`, where N is the number of
+  entries. An older snapshot stays.
+- Nothing on the drive is ever changed or deleted. A file that is on the drive
+  counts as sent, because age output differs on every run and cannot be compared.
+  A file is written to a temporary name and renamed, so a file that is there is
+  complete.
+- The destination folder must exist. If the drive is not mounted, the export
+  stops with an error and does not make a folder on the disk.
+- A private key (`AGE-SECRET-KEY-...`), as a recipient or in a recipients file, is
+  refused.
+- Each file is checked against the manifest before it is sent. A damaged file is
+  not copied.
+- The names on the drive (the agent and the session) are not encrypted. The
+  content and the manifest are.
+- The installed program has age on its PATH, so a scheduled job can run it.
+
+To read a file back:
+
+```
+age -d -i key.txt -o session.jsonl.zst claude/<name>.jsonl.zst.age
+zstd -d session.jsonl.zst
 ```
 
 ## One session in more than one place
